@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小三中文重組句子闖關遊戲</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft JhengHei", sans-serif;
+            background-color: #F0F7FF;
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 750px;
+            background: #FFFFFF;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            padding: 16px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2C3E50;
+            font-size: 22px;
+            margin: 5px 0 15px 0;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background-color: #EBF5FB;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            color: #2C3E50;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        /* 關卡選單 */
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .level-btn {
+            background: #F8F9F9;
+            border: 2px solid #BDC3C7;
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #7F8C8D;
+        }
+
+        .level-btn.unlocked {
+            border-color: #3498DB;
+            background: #EBF5FB;
+            color: #2980B9;
+        }
+
+        /* 遊戲區域 */
+        .game-area {
+            display: none;
+        }
+
+        .instruction {
+            text-align: center;
+            color: #7F8C8D;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .zone {
+            min-height: 120px;
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-content: flex-start;
+            align-items: center;
+        }
+
+        .drop-zone {
+            border: 2px dashed #3498DB;
+            background-color: #FAFAFA;
+            margin-bottom: 15px;
+        }
+
+        .source-zone {
+            border: 1px solid #D5DBDB;
+            background-color: #EAEDED;
+        }
+
+        .card {
+            background: #FFFFFF;
+            border: 2px solid #3498DB;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 17px;
+            font-weight: bold;
+            color: #2C3E50;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            touch-action: manipulation;
+        }
+
+        .card:active {
+            transform: scale(0.96);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-main { background: #2ECC71; color: white; }
+        .btn-reset { background: #E67E22; color: white; }
+        .btn-back { background: #95A5A6; color: white; }
+
+        /* 彈窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-body {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 300px;
+            width: 80%;
+        }
+
+        .modal-body button {
+            margin-top: 15px;
+            background: #3498DB;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🧩 小三重組句子闖關大冒險</h1>
+
+    <div class="stats" id="statsBar" style="display:none;">
+        <span id="levelText">第 1 關</span>
+        <span id="progressText">1 / 6</span>
+        <span id="scoreText">⭐ 0</span>
+    </div>
+
+    <!-- 關卡選單 -->
+    <div class="level-grid" id="levelGrid"></div>
+
+    <!-- 遊戲主區 -->
+    <div class="game-area" id="gameArea">
+        <div class="instruction">點擊下方詞組放入上方答題框：</div>
+        <div class="zone drop-zone" id="dropZone"></div>
+        <div class="zone source-zone" id="sourceZone"></div>
+
+        <div class="controls">
+            <button class="btn btn-back" onclick="showLevels()">返回</button>
+            <div>
+                <button class="btn btn-reset" onclick="loadQuestion()">重設</button>
+                <button class="btn btn-main" onclick="checkAnswer()">檢查答案</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="modal">
+    <div class="modal-body">
+        <h3 id="modalTitle">訊息</h3>
+        <p id="modalMsg"></p>
+        <button onclick="closeModal()">確定</button>
+    </div>
+</div>
+
+<script>
+    const gameData = [
+        // 第一關
+        [
+            { parts: ["我們要", "勤奮", "讀書，", "才會", "取得", "好成績。"] },
+            { parts: ["幸好", "媽媽", "發現得早，", "菜餚才", "不會", "燒焦。"] },
+            { parts: ["如果你", "愛護", "環境，", "就要", "少用", "塑膠袋。"] },
+            { parts: ["經過", "多年的", "苦練，", "游泳隊", "終於", "贏得冠軍。"] },
+            { parts: ["每個", "學生", "都按自己的", "興趣", "選擇", "課外活動。"] },
+            { parts: ["無論", "小明", "多麼調皮，", "老師", "都一樣", "關心他。"] }
+        ],
+        // 第二關
+        [
+            { parts: ["媽媽把", "花盆", "放在", "陽台上，", "好讓植物", "吸收充分的陽光。"] },
+            { parts: ["溫暖的", "春天來了，", "樹枝上", "盛開了", "鮮豔的", "花朵。"] },
+            { parts: ["因為弟弟", "經常", "沉迷玩樂，", "所以", "令媽媽", "非常生氣。"] },
+            { parts: ["我們", "花了", "一番心思，", "給爺爺", "挑選", "生日禮物。"] },
+            { parts: ["昨晚，", "學校", "在禮堂", "舉行晚會，", "節目", "十分精彩。"] },
+            { parts: ["妹妹", "背着", "書包上學，", "覺得", "非常", "辛苦。"] }
+        ],
+        // 第三關
+        [
+            { parts: ["我們", "共同", "減少垃圾，", "才能", "愛護", "地球。"] },
+            { parts: ["幸好我", "提早", "出門，", "才能", "趕上", "巴士。"] },
+            { parts: ["只要", "我們", "堅持，", "就能", "克服", "困難。"] },
+            { parts: ["不管", "風雨", "多大，", "爸爸都會", "準時", "接我下課。"] },
+            { parts: ["小狗", "在公園裏", "快樂地", "奔跑，", "追逐", "蝴蝶。"] },
+            { parts: ["一陣", "涼爽的", "微風吹過，", "令人", "感到", "舒暢。"] }
+        ],
+        // 第四關
+        [
+            { parts: ["為了", "健康，", "我們", "應該", "每天", "做運動。"] },
+            { parts: ["經過", "姐姐", "細心的照顧，", "植物", "終於", "開出了花朵。"] },
+            { parts: ["雖然", "天氣", "很冷，", "但是我們", "依然", "去上學。"] },
+            { parts: ["弟弟", "認真地", "完成了", "老師", "布置的", "功課。"] },
+            { parts: ["貓咪", "懶洋洋地", "躺在", "沙發上", "曬太陽。"] },
+            { parts: ["我們", "應該", "在圖書館裏", "保持", "靜悄悄。"] }
+        ],
+        // 第五關
+        [
+            { parts: ["春天", "來到了，", "大地", "換上了", "綠色的", "新衣。"] },
+            { parts: ["廚師", "精心烹調了", "每一道", "美味", "可口的", "菜式。"] },
+            { parts: ["表姐", "不僅", "懂得彈鋼琴，", "還", "擅長", "畫畫。"] },
+            { parts: ["經過", "不斷的", "練習，", "他終於", "學會了", "騎單車。"] },
+            { parts: ["晚上，", "靜悄悄的", "夜空中", "綴滿了", "璀璨的", "星星。"] },
+            { parts: ["小明聽到了", "這個好消息，", "喜出望外，", "連忙", "告訴了", "媽媽。"] }
+        ]
+    ];
+
+    let currentLevel = 0;
+    let currentQuestion = 0;
+    let unlocked = 1;
+    let score = 0;
+
+    function renderLevels() {
+        const grid = document.getElementById('levelGrid');
+        grid.innerHTML = '';
+        for (let i = 0; i < gameData.length; i++) {
+            const btn = document.createElement('div');
+            const isUnlocked = i < unlocked;
+            btn.className = `level-btn ${isUnlocked ? 'unlocked' : ''}`;
+            btn.innerHTML = `第 ${i + 1} 關<br>${isUnlocked ? '🔓' : '🔒'}`;
+            if (isUnlocked) {
+                btn.onclick = () => startLevel(i);
+            }
+            grid.appendChild(btn);
+        }
+    }
+
+    function showLevels() {
+        document.getElementById('levelGrid').style.display = 'grid';
+        document.getElementById('gameArea').style.display = 'none';
+        document.getElementById('statsBar').style.display = 'none';
+        renderLevels();
+    }
+
+    function startLevel(lvl) {
+        currentLevel = lvl;
+        currentQuestion = 0;
+        document.getElementById('levelGrid').style.display = 'none';
+        document.getElementById('gameArea').style.display = 'block';
+        document.getElementById('statsBar').style.display = 'flex';
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        const q = gameData[currentLevel][currentQuestion];
+        document.getElementById('levelText').innerText = `第 ${currentLevel + 1} 關`;
+        document.getElementById('progressText').innerText = `${currentQuestion + 1} / ${gameData[currentLevel].length}`;
+        document.getElementById('scoreText').innerText = `⭐ ${score}`;
+
+        const drop = document.getElementById('dropZone');
+        const source = document.getElementById('sourceZone');
+        drop.innerHTML = '';
+        source.innerHTML = '';
+
+        let shuffled = [...q.parts].sort(() => Math.random() - 0.5);
+        shuffled.forEach(text => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerText = text;
+            card.onclick = () => {
+                if (card.parentElement.id === 'sourceZone') {
+                    drop.appendChild(card);
+                } else {
+                    source.appendChild(card);
+                }
+            };
+            source.appendChild(card);
+        });
+    }
+
+    function checkAnswer() {
+        const drop = document.getElementById('dropZone');
+        const userStr = Array.from(drop.children).map(c => c.innerText).join('');
+        const correctStr = gameData[currentLevel][currentQuestion].parts.join('');
+
+        if (userStr === correctStr) {
+            score += 10;
+            showModal("🎉 太棒了！", "答對囉！", () => {
+                currentQuestion++;
+                if (currentQuestion < gameData[currentLevel].length) {
+                    loadQuestion();
+                } else {
+                    if (currentLevel + 1 >= unlocked && unlocked < gameData.length) {
+                        unlocked = currentLevel + 2;
+                    }
+                    showModal("🏆 關卡完成", `恭喜完成第 ${currentLevel + 1} 關！`, () => {
+                        showLevels();
+                    });
+                }
+            });
+        } else {
+            showModal("❌ 差一點點", "順序不太對，再排排看！");
+        }
+    }
+
+    let nextAction = null;
+    function showModal(title, msg, callback = null) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMsg').innerText = msg;
+        document.getElementById('modal').style.display = 'flex';
+        nextAction = callback;
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+        if (nextAction) {
+            nextAction();
+            nextAction = null;
+        }
+    }
+
+    showLevels();
+</script>
+</body>
+</html>
